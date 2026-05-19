@@ -1,0 +1,51 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          target: x86_64-pc-windows-msvc
+          
+      - name: Build for Windows
+        run: cargo build --release
+        
+      - name: Upload Windows exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: PresentationTimer-Windows
+          path: target/release/presentation-timer.exe
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        
+      - name: Build for macOS
+        run: cargo build --release
+        
+      - name: Package macOS App
+        run: |
+          chmod +x package_mac.sh
+          ./package_mac.sh
+          # 패키징된 앱을 zip으로 압축
+          cd ~/Desktop
+          zip -r PresentationTimer-macOS.zip PresentationTimer.app
+          
+      - name: Upload macOS App
+        uses: actions/upload-artifact@v4
+        with:
+          name: PresentationTimer-macOS
+          path: ~/Desktop/PresentationTimer-macOS.zip
