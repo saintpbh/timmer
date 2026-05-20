@@ -1,7 +1,10 @@
 use crate::config::AppConfig;
 use crate::control_panel;
 use crate::overlay;
+#[cfg(target_os = "macos")]
 use crate::platform_macos;
+#[cfg(target_os = "windows")]
+use crate::platform_windows;
 use crate::style::TimerStyle;
 use crate::timer::TimerState;
 
@@ -69,22 +72,34 @@ impl TimerApp {
     }
 }
 
-/// macOS 시스템 폰트를 로드하여 한글 지원 및 폰트 선택 기능 제공
+/// 시스템 폰트를 로드하여 한글 지원 및 폰트 선택 기능 제공
 fn setup_fonts(ctx: egui::Context) -> egui::FontDefinitions {
     let mut fonts = egui::FontDefinitions::default();
 
-    // 로드할 폰트 목록 (이름, 경로)
-    let font_options = [
-        ("DIN Alternate Bold", "/System/Library/Fonts/Supplemental/DIN Alternate Bold.ttf"),
-        ("애플 고딕", "/System/Library/Fonts/AppleSDGothicNeo.ttc"),
-        ("애플 명조", "/System/Library/Fonts/Supplemental/AppleMyungjo.ttf"),
-    ];
+    // 로드할 폰트 목록 (이름, 경로) - 크로스 플랫폼 지원
+    let font_options = if cfg!(target_os = "windows") {
+        let sys_root = std::env::var("SystemRoot")
+            .or_else(|_| std::env::var("windir"))
+            .unwrap_or_else(|_| "C:\\Windows".to_string());
+        vec![
+            ("맑은 고딕".to_string(), format!("{}\\Fonts\\malgun.ttf", sys_root)),
+            ("굴림".to_string(), format!("{}\\Fonts\\gulim.ttc", sys_root)),
+            ("돋움".to_string(), format!("{}\\Fonts\\dotum.ttc", sys_root)),
+            ("바탕".to_string(), format!("{}\\Fonts\\batang.ttc", sys_root)),
+        ]
+    } else {
+        vec![
+            ("DIN Alternate Bold".to_string(), "/System/Library/Fonts/Supplemental/DIN Alternate Bold.ttf".to_string()),
+            ("애플 고딕".to_string(), "/System/Library/Fonts/AppleSDGothicNeo.ttc".to_string()),
+            ("애플 명조".to_string(), "/System/Library/Fonts/Supplemental/AppleMyungjo.ttf".to_string()),
+        ]
+    };
 
     let mut korean_font_name: Option<String> = None;
 
     for (name, path) in font_options {
-        if let Ok(font_data) = std::fs::read(path) {
-            let font_name = name.to_string();
+        if let Ok(font_data) = std::fs::read(&path) {
+            let font_name = name.clone();
             fonts.font_data.insert(
                 font_name.clone(),
                 std::sync::Arc::new(egui::FontData::from_owned(font_data)),
@@ -97,7 +112,9 @@ fn setup_fonts(ctx: egui::Context) -> egui::FontDefinitions {
             );
 
             // 첫 번째 한글 폰트를 기억 (DIN 등 비-한글 폰트는 건너뜀)
-            if korean_font_name.is_none() && (name == "애플 고딕" || name == "애플 명조") {
+            let is_korean_font = name == "애플 고딕" || name == "애플 명조"
+                || name == "맑은 고딕" || name == "굴림" || name == "돋움" || name == "바탕";
+            if korean_font_name.is_none() && is_korean_font {
                 korean_font_name = Some(font_name.clone());
             }
 
@@ -272,10 +289,14 @@ impl eframe::App for TimerApp {
 
                     let shared = shared_clone.lock().unwrap();
 
-                    // macOS 네이티브 오버레이 설정 (모니터 위치/크기 자동 지정)
+                    // macOS 및 Windows 네이티브 오버레이 설정 (모니터 위치/크기 자동 지정)
                     #[cfg(target_os = "macos")]
                     {
                         platform_macos::configure_overlay_window(ctx, viewport_id, target_monitor);
+                    }
+                    #[cfg(target_os = "windows")]
+                    {
+                        platform_windows::configure_overlay_window(ctx, viewport_id, target_monitor);
                     }
 
                     overlay::render_overlay(ctx, &shared.timer, &shared.style);

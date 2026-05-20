@@ -6,7 +6,10 @@ mod config;
 mod control_panel;
 mod font_scanner;
 mod overlay;
+#[cfg(target_os = "macos")]
 mod platform_macos;
+#[cfg(target_os = "windows")]
+mod platform_windows;
 mod style;
 mod timer;
 

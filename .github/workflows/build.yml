@@ -3,6 +3,8 @@ name: Build and Release
 on:
   push:
     branches: [ "main" ]
+    tags:
+      - "v*"
   workflow_dispatch:
 
 jobs:
@@ -15,6 +17,9 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           target: x86_64-pc-windows-msvc
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
           
       - name: Build for Windows
         run: cargo build --release
@@ -33,6 +38,9 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+
       - name: Build for macOS
         run: cargo build --release
         
@@ -49,3 +57,42 @@ jobs:
         with:
           name: PresentationTimer-macOS
           path: ~/Desktop/PresentationTimer-macOS.zip
+
+  create-release:
+    name: Create Release
+    needs: [build-windows, build-macos]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: PresentationTimer-Windows
+          path: ./artifacts/windows
+
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: PresentationTimer-macOS
+          path: ./artifacts/macos
+
+      - name: Prepare assets for release
+        run: |
+          mkdir release_assets
+          # Windows 실행 파일 이동 및 이름 변경
+          mv ./artifacts/windows/presentation-timer.exe ./release_assets/PresentationTimer.exe
+          # macOS zip 이동
+          mv ./artifacts/macos/PresentationTimer-macOS.zip ./release_assets/PresentationTimer-macOS.zip
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release_assets/PresentationTimer.exe
+            release_assets/PresentationTimer-macOS.zip
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

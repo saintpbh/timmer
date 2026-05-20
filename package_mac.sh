@@ -45,9 +45,13 @@ cat > "$APP_BUNDLE/Contents/Info.plist" << EOF
 </plist>
 EOF
 
+# Ad-hoc code signing to prevent Gatekeeper errors
+echo "Applying ad-hoc code signing..."
+codesign --force --deep --sign - "$APP_BUNDLE"
+
 # Copy to Desktop
 echo "Moving to Desktop..."
 rm -rf "$DEST_DIR/$APP_BUNDLE"
 mv "$APP_BUNDLE" "$DEST_DIR/"
 
-echo "Successfully created and moved $APP_NAME.app to Desktop!"
+echo "Successfully created and signed $APP_NAME.app and moved to Desktop!"
