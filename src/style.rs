@@ -64,6 +64,40 @@ impl TimerPosition {
     }
 }
 
+/// 실시간 알림 메시지 위치 프리셋
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
+pub enum AlertPosition {
+    AboveTimer,
+    BelowTimer,
+    ScreenTop,
+    ScreenBottom,
+}
+
+impl AlertPosition {
+    pub const ALL: [Self; 4] = [
+        Self::AboveTimer,
+        Self::BelowTimer,
+        Self::ScreenTop,
+        Self::ScreenBottom,
+    ];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::AboveTimer => "⏱ 타이머 바로 위",
+            Self::BelowTimer => "⏱ 타이머 바로 아래",
+            Self::ScreenTop => "🖥 화면 최상단",
+            Self::ScreenBottom => "🖥 화면 최하단",
+        }
+    }
+}
+
+impl Default for AlertPosition {
+    fn default() -> Self {
+        Self::BelowTimer
+    }
+}
+
+
 /// 색상을 [u8; 4] (RGBA)로 직렬화하기 위한 헬퍼
 mod color_serde {
     use egui::Color32;
@@ -137,6 +171,26 @@ pub struct TimerStyle {
     /// 알림 볼륨 (0.0 ~ 1.0)
     #[serde(default = "default_volume")]
     pub sound_volume: f32,
+
+    /// 실시간 알림 메시지 켜기/끄기
+    #[serde(default)]
+    pub alert_enabled: bool,
+
+    /// 실시간 알림 메시지 텍스트
+    #[serde(default)]
+    pub alert_message: String,
+
+    /// 알림 메시지 위치 설정
+    #[serde(default)]
+    pub alert_position: AlertPosition,
+
+    /// 알림 메시지 폰트 크기
+    #[serde(default = "default_alert_font_size")]
+    pub alert_font_size: f32,
+
+    /// 알림 메시지 색상
+    #[serde(default = "default_alert_color", with = "color_serde")]
+    pub alert_color: Color32,
 }
 
 fn default_true() -> bool {
@@ -145,6 +199,14 @@ fn default_true() -> bool {
 
 fn default_volume() -> f32 {
     1.0
+}
+
+fn default_alert_font_size() -> f32 {
+    36.0
+}
+
+fn default_alert_color() -> Color32 {
+    Color32::from_rgb(255, 235, 59)
 }
 
 impl Default for TimerStyle {
@@ -164,9 +226,15 @@ impl Default for TimerStyle {
             sound_enabled: true,
             sound_alert_secs: 0,
             sound_volume: 1.0,
+            alert_enabled: false,
+            alert_message: String::new(),
+            alert_position: AlertPosition::default(),
+            alert_font_size: default_alert_font_size(),
+            alert_color: default_alert_color(),
         }
     }
 }
+
 
 impl TimerStyle {
     /// 경고 레벨에 따른 색상 반환

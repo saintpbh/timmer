@@ -35,7 +35,7 @@ pub fn render_overlay(ctx: &egui::Context, timer: &TimerState, style: &TimerStyl
             } else {
                 egui::FontFamily::Name(style.font_family.clone().into())
             };
-            let font_id = FontId::new(style.font_size, family);
+            let font_id = FontId::new(style.font_size, family.clone());
 
             // 텍스트 크기 측정
             let galley =
@@ -67,6 +67,68 @@ pub fn render_overlay(ctx: &egui::Context, timer: &TimerState, style: &TimerStyl
 
             // 메인 텍스트 렌더링
             painter.galley(text_pos, galley, Color32::TRANSPARENT);
+
+            // 실시간 알림 메시지 렌더링
+            if style.alert_enabled && !style.alert_message.is_empty() {
+                let alert_font_id = FontId::new(style.alert_font_size, family.clone());
+                let display_alert_color = Color32::from_rgba_unmultiplied(
+                    style.alert_color.r(),
+                    style.alert_color.g(),
+                    style.alert_color.b(),
+                    (alpha * 255.0) as u8,
+                );
+
+                let alert_galley = painter.layout_no_wrap(
+                    style.alert_message.clone(),
+                    alert_font_id.clone(),
+                    display_alert_color,
+                );
+                let alert_size = alert_galley.size();
+
+                // 위치 계산
+                let alert_pos = match style.alert_position {
+                    crate::style::AlertPosition::AboveTimer => {
+                        let alert_x = text_pos.x + (text_size.x - alert_size.x) / 2.0;
+                        let alert_y = text_pos.y - alert_size.y - 12.0;
+                        Pos2::new(alert_x, alert_y)
+                    }
+                    crate::style::AlertPosition::BelowTimer => {
+                        let alert_x = text_pos.x + (text_size.x - alert_size.x) / 2.0;
+                        let alert_y = text_pos.y + text_size.y + 12.0;
+                        Pos2::new(alert_x, alert_y)
+                    }
+                    crate::style::AlertPosition::ScreenTop => {
+                        let alert_x = screen_rect.left() + (screen_rect.width() - alert_size.x) / 2.0;
+                        let alert_y = screen_rect.top() + 40.0;
+                        Pos2::new(alert_x, alert_y)
+                    }
+                    crate::style::AlertPosition::ScreenBottom => {
+                        let alert_x = screen_rect.left() + (screen_rect.width() - alert_size.x) / 2.0;
+                        let alert_y = screen_rect.bottom() - alert_size.y - 40.0;
+                        Pos2::new(alert_x, alert_y)
+                    }
+                };
+
+                // 그림자 렌더링
+                if style.shadow_enabled && alpha > 0.1 {
+                    let shadow_offset = (style.alert_font_size * 0.03).max(2.0);
+                    let shadow_color =
+                        Color32::from_rgba_unmultiplied(0, 0, 0, (alpha * 200.0) as u8);
+                    let shadow_galley = painter.layout_no_wrap(
+                        style.alert_message.clone(),
+                        alert_font_id.clone(),
+                        shadow_color,
+                    );
+                    painter.galley(
+                        Pos2::new(alert_pos.x + shadow_offset, alert_pos.y + shadow_offset),
+                        shadow_galley,
+                        Color32::TRANSPARENT,
+                    );
+                }
+
+                // 메인 알림 메시지 렌더링
+                painter.galley(alert_pos, alert_galley, Color32::TRANSPARENT);
+            }
 
             // 진행률 막대 바 렌더링 제거
 

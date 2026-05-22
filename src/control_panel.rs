@@ -77,6 +77,54 @@ pub fn render_control_panel(
         ui.separator();
 
         // ═══════════════════════════════════════════
+        // 실시간 알림 메시지 설정 (시계 바로 아래)
+        // ═══════════════════════════════════════════
+        ui.heading("📢  실시간 알림 메시지");
+        ui.add_space(2.0);
+
+        ui.horizontal(|ui| {
+            ui.checkbox(&mut style.alert_enabled, "알림 메시지 켜기");
+        });
+
+        if style.alert_enabled {
+            ui.horizontal(|ui| {
+                ui.label("메시지:");
+                ui.add(
+                    egui::TextEdit::singleline(&mut style.alert_message)
+                        .desired_width(180.0)
+                        .hint_text("화면에 띄울 알림 입력"),
+                );
+            });
+
+            ui.horizontal(|ui| {
+                ui.label("위치:");
+                egui::ComboBox::from_id_source("alert_position_combo")
+                    .selected_text(style.alert_position.label())
+                    .show_ui(ui, |ui| {
+                        for pos in crate::style::AlertPosition::ALL.iter() {
+                            ui.selectable_value(&mut style.alert_position, *pos, pos.label());
+                        }
+                    });
+            });
+
+            ui.horizontal(|ui| {
+                ui.label("크기:");
+                ui.add(egui::Slider::new(&mut style.alert_font_size, 15.0..=120.0).suffix("px"));
+            });
+
+            ui.horizontal(|ui| {
+                ui.label("색상:");
+                let mut c = color32_to_rgb(style.alert_color);
+                if ui.color_edit_button_rgb(&mut c).changed() {
+                    style.alert_color = rgb_to_color32(c);
+                }
+            });
+        }
+
+        ui.add_space(4.0);
+        ui.separator();
+
+        // ═══════════════════════════════════════════
         // 타이머 제어 버튼
         // ═══════════════════════════════════════════
         ui.heading("⏱  타이머 제어");
